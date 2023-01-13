@@ -15,15 +15,16 @@ def PCA(X , num_components):
      
     X_meaned = X - np.mean(X , axis = 0)
     truncatedSVD = TruncatedSVD(num_components)
-    X_truncated = truncatedSVD.fit_transform(X)
+    X_truncated = truncatedSVD.fit_transform(X_meaned)
+    #X_truncated[19] = [-1 for i in range(50)]
 
-    return (X_meaned.T @ X_truncated).T
+    return truncatedSVD.inverse_transform(X_truncated)
     
 
-D_reduced = PCA(D,100)
+
 
 # Here are the first ten guys of the dataset
-fig = plt.figure(figsize=(10, 3))
+fig = plt.figure(figsize=(50, 15))
 # for i in range(5):
 #     ax = plt.subplot2grid((3, 10), (int(i/10), i-int(i/10)*10))
     
@@ -35,6 +36,7 @@ def showPicture(i):
     ax = plt.subplot2grid((3, 10), (int(i/10), i-int(i/10)*10))
     ax.imshow(D_reduced[i,:].reshape(64,64), cmap=plt.cm.gray)
     ax.axis('off')
-
+D_reduced = PCA(D,5)
 showPicture(19)
+
 # %%
