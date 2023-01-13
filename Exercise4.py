@@ -44,18 +44,18 @@ def IndicatorNonzero(D):
     return ( D != 0).astype(int)
 
 def matrix_completion(D, r, tmax, labda):
-    d, n = D.shape
+    n, d = D.shape
     X, Y = InitRandom(n, d, r)
     O = IndicatorNonzero(D)
     t = 1
     while t < tmax:
         for k in range(d):
             OXk = np.diag(O[:,k])
-            X[:,k] = D.T.dot(k*Y) @ np.linalg.inv(Y.T @ OXk @ Y + labda*np.eye(r))
-            for i in range(n):
-                OYi = np.diag(O[i,:])
-                Y[i,:] = D[i]*X @ np.linalg.inv(X.T @ OYi @ X + labda*np.eye(r))
-            t += 1
+            X[:, k] = D[k:,].T @ Y @ np.linalg.inv(Y.T @ OXk @ Y + labda*np.eye(r))
+        for i in range(n):
+            OYi = np.diag(O[i,:])
+            Y[i,:] = D[i]*X @ np.linalg.inv(X.T @ OYi @ X + labda*np.eye(r))
+        t += 1
     return X, Y
 
 # Run matrix completion algorithm
