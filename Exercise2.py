@@ -21,22 +21,33 @@ def PCA(X , num_components):
     return truncatedSVD.inverse_transform(X_truncated)
     
 
-
-
-# Here are the first ten guys of the dataset
-fig = plt.figure(figsize=(50, 15))
-# for i in range(5):
-#     ax = plt.subplot2grid((3, 10), (int(i/10), i-int(i/10)*10))
-    
-#     ax.imshow(D_reduced[i,:].reshape(64,64), cmap=plt.cm.gray)
-#     ax.axis('off')
-
 def showPicture(i):
-
     ax = plt.subplot2grid((3, 10), (int(i/10), i-int(i/10)*10))
     ax.imshow(D_reduced[i,:].reshape(64,64), cmap=plt.cm.gray)
     ax.axis('off')
+#A
 D_reduced = PCA(D,5)
-showPicture(19)
+fig = plt.figure(figsize=(50, 15))
+for i in range(5):
+    showPicture(i)
+#B
+X_meaned = D - np.mean(D , axis = 0)
+truncatedSVD = TruncatedSVD(5)
+X_truncated = truncatedSVD.fit_transform(X_meaned)
+print(X_truncated[0])
 
+#C
+D_reduced = PCA(D,25)
+showPicture(19)
+D_reduced = PCA(D,50)
+showPicture(19)
+D_reduced = PCA(D,100)
+
+#D
+X_meaned = D - np.mean(D , axis = 0)
+truncatedSVD = TruncatedSVD(50)
+X_truncated = truncatedSVD.fit_transform(X_meaned)
+X_truncated[19] = [-1 for i in range(50)]
+D_reduced = truncatedSVD.inverse_transform(X_truncated)
+showPicture(19)
 # %%
