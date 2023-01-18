@@ -43,37 +43,50 @@ def InitRandom(n, d, r ):
 def IndicatorNonzero(D):
     return ( D != 0).astype(int)
 
-def matrix_completion(D, r, tmax, labda):
-    n, d = D.shape
-    X, Y = InitRandom(n, d, r)
+def stoppingcriteria(mses):
+    if len(mses) < 10:
+        return False
+    else:
+        delta = []
+        for i in range(1,12):
+            delta.append((mses[len(mses)-i-1]) - mses[len(mses)-i])
+        delta = np.mean(delta)
+        if delta < 0:
+            return True
+        else:
+            return False
+
+mses = []
+
+def matrix_completion(D, r, tmax=100, labda=0.00001):
+    n, d = D.shape #n = 344, d = 18
+    X, Y = InitRandom(n, d, r) # = (d,r), Y = (n,r)
     O = IndicatorNonzero(D)
     t = 1
-    print("n:" + n + "d" + d )
-    print("D shape:" + D.shape + "O shape" + O.shape)
 
     while t < tmax:
         for k in range(d):
-            OXk = np.diag(O[:,k])
-            X[:, k] = D[:,k].T.dot(Y) @ np.linalg.inv(Y.T @ OXk @ Y + labda*np.eye(r))
+            OXk = np.diag(O[:, k])
+            X[k,] = D[:,k].T.dot(Y) @ np.linalg.inv(Y.T @ OXk @ Y + labda*np.eye(r))
         for i in range(n):
             OYi = np.diag(O[i,:])
-            Y[i,:] = D[i]*X @ np.linalg.inv(X.T @ OYi @ X + labda*np.eye(r))
-        t += 1
+            result = D[i,].dot(X) @ np.linalg.inv(X.T @ OYi @ X + labda*np.eye(r))
+            Y[i,] =  result
+            
+        mse = (1/np.linalg.norm(O,ord=1)) * (np.linalg.norm(D - np.multiply(O,(Y @ X.T)), ord = 2))**2
 
-    return X, Y
+        mses.append(mse)
+        t += 1
+        # if(stoppingcriteria(mses=mses)):
+        #     break
+
+    return X, Y, t
 
 # Run matrix completion algorithm
-X, Y = matrix_completion(D, r, tmax, labda)
-
-# Calculate MSEO at each iteration
-O = IndicatorNonzero(D)
-mses = []
-for t in range(1, tmax+1):
-    mse = 1/np.sum(O) * np.linalg.norm(D - O*(Y @ X.T))**2
-    mses.append(mse)
+X, Y, t = matrix_completion(D, r, tmax, labda)
 
 # Plot MSEO vs. iteration
-plt.plot(range(1, tmax+1), mses)
+plt.plot(range(1, t), mses)
 plt.xlabel('Iteration')
 plt.ylabel('MSEO')
 plt.show()
