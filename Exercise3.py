@@ -25,45 +25,27 @@ def generateBlobs(epsilon, n):
     blobs, labels = sklearn.datasets.make_blobs(n_samples=n,centers=3, cluster_std=[epsilon + 1, epsilon + 2.5, epsilon + 0.5])
     return "blobs", blobs, labels, 3
 
-def init_centroids_greedy_pp(D, r, l=10):
-    """
-        :param r: (int) number of centroids (clusters)
-        :param D: (np-array) the data matrix
-        :param l: (int) number of centroid candidates in each step
-        :return: (np-array) 'X' the selected centroids from the dataset
-    """
-    rng = np.random.default_rng(
-        seed=7)
-    # use this random generator to sample the candidates (sampling according to given probabilities
-    # can be done via rng.choice(..))
-    n, d = D.shape
 
-    indexes = rng.integers(low=0, high=n, size=l)
 
-    # print(indexes, D)
-    i = arg_min_init(indexes, D)
+#get the minimal index
+def arg_min_init(indexes, D):
+    #init the index and minimal values to the first sum
+    min_index = 0
+    min_found = np.linalg.norm(D[0, :] - D[0, :]) ** 2
 
-    # print("Found min index:", i)
-    # print(indexes)
+    n = D.shape[0]
+    #loop through matrix and get index of minimal sum
+    for i in indexes:
+        for j in range(n):
+            sum = np.linalg.norm(D[j, :] - D[i, :]) ** 2
+            if sum < min_found:
+                min_index = i
+                min_found = sum
 
-    X = np.array(D[i, :]).T
+    return min_index
 
-    s = 2
-
-    while s <= r:
-        # print("step s:", s)
-        probabilities = get_probabilities(D, X)
-        indexes = rng.choice(n, l, p=probabilities)
-        i = arg_min_loop(indexes, D, X)
-        # print("x: \n", X)
-
-        X = append_to_X(X, D[i, :].T)
-        s += 1
-
-    return X
-
-def get_probabilities(D, X):
-    # print("get probabilities")
+#get probabilities
+def probabilities(D, X):
     n = D.shape[0]
     probabilities = np.zeros(n)
     denominator = 0
@@ -76,28 +58,16 @@ def get_probabilities(D, X):
 
     return probabilities
 
-# Line 3 of the pseudocode
-def arg_min_init(indexes, D):
-    min_index = -1
-    min_found = 9999999
-    n = D.shape[0]
-    for i in indexes:
-        for j in range(n):
-            sum = np.linalg.norm(D[j, :] - D[i, :]) ** 2
-            if sum < min_found:
-                min_index = i
-                min_found = sum
 
-    return min_index
-
-def arg_min_loop(indexes, D, X):
+#func to get arg min in loop
+def loop_arg_min(indexes, D, X):
     min_index = -1
     min_found = 9999999
     n = D.shape[0]
     for i in indexes:
         sum = 0
         for j in range(n):
-            mat = append_to_X(X, D[i, :].T)
+            mat = add_to_X(X, D[i, :].T)
             sum += dist(D[j, :].T, mat)
         if sum < min_found:
             min_found = sum
@@ -105,36 +75,62 @@ def arg_min_loop(indexes, D, X):
     return min_index
 
 def dist(v, X):
+    #check if shape is correct
     assert np.shape(v)[0] == np.shape(X)[0], f"Shape of v: {np.shape(v)} is not equal to shape of X: {np.shape(X)}"
-    min_found = 999999999
-    # print(X.shape)
-
+    current_min = 999999999
+    #if shape is 1d, just return the norm
     if len(X.shape) == 1:
         return np.linalg.norm(v - X)
-
+    #else loop trough all norms and return smallest
     for i in range(X.shape[1]):
         column_vector = X[:, i]
         d = np.linalg.norm(v - column_vector)
-        min_found = min(d, min_found)
+        current_min = min(d, current_min)
 
     # print("Min found:", min_found)
-    return min_found
+    return current_min
 
-def append_to_X(X, column):
+#func to add array as column to X
+def add_to_X(X, column):
     if len(X.shape) == 1:
         mat = np.zeros((X.shape[0], 2))
         mat[:, 0] = X
         mat[:, 1] = column
         return mat
     else:
-        return np.append(X, cast_array_to_column_vector(column), axis=1)
+        return np.append(X, array_to_column(column), axis=1)
 
-def cast_array_to_column_vector(arra):
-    length = np.shape(arra)[0]
+#func to cast array to column
+def array_to_column(array):
+    length = np.shape(array)[0]
     mat = np.zeros((length, 1))
     for i in range(length):
-        mat[i, :] = arra[i]
+        mat[i, :] = array[i]
     return mat
+
+#init of greedy centroids
+def centroids_init(D, r, l=10):
+    #get shape of d
+    n, d = D.shape
+    # random generator to sample candidates
+    rng = np.random.default_rng(
+        seed=7)
+    indexes = rng.integers(low=0, high=n, size=l)
+    i = arg_min_init(indexes, D)
+    
+    X = np.array(D[i, :]).T
+    z = 2
+
+    while z <= r:
+        probabilities = probabilities(D, X)
+        indexes = rng.choice(n, l, p=probabilities)
+        i = loop_arg_min(indexes, D, X)
+        # print("x: \n", X)
+
+        X = add_to_X(X, D[i, :].T)
+        z += 1
+
+    return X
 
 def spectral_clustering(W,r, X_init):
     '''
@@ -186,7 +182,7 @@ def kmeans(D,r, X_init, epsilon=0.00001, t_max=10000):
 n=500
 dataID, D, labels, r = generateBlobs(0.05,n)
 
-X_init = init_centroids_greedy_pp(D,r)
+X_init = centroids_init(D,r)
 X,Y = kmeans(D,r, X_init)
 
 fig = plt.figure()
@@ -207,27 +203,18 @@ nmis = []
 n=500
 
 from sklearn.neighbors import KNeighborsTransformer
-# dataID, D, labels, r = generateMoons(0.05,n)
 
-# neigh = NearestNeighbors(radius=1.6)
-# neigh.fit(D)
-# rng = neigh.radius_neighbors(D)
-# print(rng)
-
-for neighbours in knn:
+for neighbour in knn:
     dataID, D, labels, r = generateMoons(0.05,n)
-    N = kneighbors_graph(D, neighbours)
+    N = kneighbors_graph(D, neighbour)
     W = 0.5 * (N + N.T)
-    # print(W.shape)
-    Y = spectral_clustering(W, r, init_centroids_greedy_pp)
+    Y = spectral_clustering(W, r, centroids_init)
     plt.scatter(D[:, 0], D[:, 1], c=np.argmax(Y, axis=1), s=10)
     plt.title(('%s' % dataID) + ", nrof neigbours: "
-              + str(neighbours))
+              + str(neighbour))
     plt.show()
-    # print(Y)
 
     nmi = sklearn.metrics.normalized_mutual_info_score(labels, Y[:, 0])
-    # print("nmi score of moons with knn:", nmi)
     nmis.append(nmi)
 
 print(nmis)
